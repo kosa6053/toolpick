@@ -26,7 +26,6 @@ const result = await generateText({
   tools: allTools,
   prepareStep: index.prepareStep(),
   prompt: "ship it to prod",
-  maxSteps: 10,
 });
 ```
 
@@ -81,7 +80,6 @@ const result = await generateText({
     search_tools: index.searchTool(),
   },
   prepareStep: index.prepareStep({ alwaysActive: ["search_tools"] }),
-  maxSteps: 10,
   prompt: "find and use the right tool",
 });
 ```
