@@ -8,6 +8,8 @@ export interface SelectOptions {
   threshold?: number;
   /** When true, returns fewer than maxTools if there's a large score gap. Default: true */
   adaptive?: boolean;
+  /** Per-call override of relatedTools. Fully replaces the index-level map when provided. */
+  relatedTools?: Record<string, string[]>;
 }
 
 export interface SearchResult {
@@ -31,6 +33,8 @@ export interface ToolIndexOptions {
   embeddingCache?: EmbeddingCacheOptions;
   rerankerModel?: LanguageModel;
   enrichDescriptions?: boolean;
+  /** Map of tool name → tool names that should be included whenever the key tool is selected. */
+  relatedTools?: Record<string, string[]>;
 }
 
 export interface ToolDescription {

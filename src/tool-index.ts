@@ -86,6 +86,27 @@ function findElbow(results: SearchResult[], max: number): SearchResult[] {
   return results.slice(0, max);
 }
 
+export function expandRelated(
+  names: string[],
+  relatedMap: Record<string, string[]> | undefined,
+): string[] {
+  if (!relatedMap) return names;
+  const seen = new Set(names);
+  const expanded = [...names];
+  for (const name of names) {
+    const related = relatedMap[name];
+    if (related) {
+      for (const r of related) {
+        if (!seen.has(r)) {
+          seen.add(r);
+          expanded.push(r);
+        }
+      }
+    }
+  }
+  return expanded;
+}
+
 function buildToolDescription(name: string, toolDef: ToolSet[string]): string {
   const parts: string[] = [];
 
@@ -131,6 +152,7 @@ export function createToolIndex<TOOLS extends ToolSet>(
     embeddingCache,
     rerankerModel,
     enrichDescriptions: shouldEnrich = false,
+    relatedTools: indexRelatedTools,
   } = options;
 
   const strategy = options.strategy
@@ -194,6 +216,10 @@ export function createToolIndex<TOOLS extends ToolSet>(
     async select(query: string, selectOptions: SelectOptions = {}): Promise<string[]> {
       const { maxTools = 5, alwaysActive = [], threshold, adaptive = true } = selectOptions;
 
+      const relatedMap = "relatedTools" in selectOptions
+        ? selectOptions.relatedTools
+        : indexRelatedTools;
+
       const fetchCount = rerankerModel ? maxTools * 3 : maxTools;
       let results = await engine.search(query, fetchCount);
 
@@ -213,16 +239,23 @@ export function createToolIndex<TOOLS extends ToolSet>(
 
       const selected = results.map((r) => r.name);
       const merged = [...new Set([...selected, ...alwaysActive])];
+      const expanded = expandRelated(merged, relatedMap);
 
-      return merged.filter((name) => toolNameSet.has(name));
+      return expanded.filter((name) => toolNameSet.has(name));
     },
 
     prepareStep(stepOptions?: SelectOptions) {
-      return createPrepareStep<TOOLS>(engine, toolNames, stepOptions);
+      const relatedMap = stepOptions && "relatedTools" in stepOptions
+        ? stepOptions.relatedTools
+        : indexRelatedTools;
+      return createPrepareStep<TOOLS>(engine, toolNames, stepOptions, relatedMap);
     },
 
     middleware(mwOptions?: SelectOptions): LanguageModelMiddleware {
-      return createMiddleware(engine, toolNames, mwOptions);
+      const relatedMap = mwOptions && "relatedTools" in mwOptions
+        ? mwOptions.relatedTools
+        : indexRelatedTools;
+      return createMiddleware(engine, toolNames, mwOptions, relatedMap);
     },
 
     searchTool() {

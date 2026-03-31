@@ -220,3 +220,108 @@ describe("createToolIndex end-to-end", () => {
     expect(results.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("relatedTools", () => {
+  it("index-level relatedTools injects companions when key tool is selected", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["queryDatabase"],
+      },
+    });
+    const selected = await idx.select("create an invoice for a customer", { maxTools: 3 });
+    expect(selected).toContain("createInvoice");
+    expect(selected).toContain("queryDatabase");
+  });
+
+  it("related tools can exceed maxTools", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["queryDatabase", "sendEmail"],
+      },
+    });
+    const selected = await idx.select("create an invoice", { maxTools: 1 });
+    expect(selected).toContain("createInvoice");
+    expect(selected).toContain("queryDatabase");
+    expect(selected).toContain("sendEmail");
+  });
+
+  it("expansion is one-directional — selecting a companion does not pull in the key", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["queryDatabase"],
+      },
+    });
+    const selected = await idx.select("run a SQL query on postgres", { maxTools: 3 });
+    expect(selected).toContain("queryDatabase");
+    expect(selected).not.toContain("createInvoice");
+  });
+
+  it("SelectOptions relatedTools overrides index-level map", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["queryDatabase"],
+      },
+    });
+    const selected = await idx.select("create an invoice for a customer", {
+      maxTools: 3,
+      relatedTools: {
+        createInvoice: ["sendEmail"],
+      },
+    });
+    expect(selected).toContain("createInvoice");
+    expect(selected).toContain("sendEmail");
+    expect(selected).not.toContain("queryDatabase");
+  });
+
+  it("SelectOptions relatedTools: {} disables expansion", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["queryDatabase"],
+      },
+    });
+    const selected = await idx.select("create an invoice for a customer", {
+      maxTools: 3,
+      relatedTools: {},
+    });
+    expect(selected).toContain("createInvoice");
+    expect(selected).not.toContain("queryDatabase");
+  });
+
+  it("related tools that don't exist in the toolset are filtered out", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["nonExistentTool", "queryDatabase"],
+      },
+    });
+    const selected = await idx.select("create an invoice", { maxTools: 3 });
+    expect(selected).toContain("queryDatabase");
+    expect(selected).not.toContain("nonExistentTool");
+  });
+
+  it("already-selected tools are not duplicated by expansion", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["createIssue"],
+        createIssue: ["closeIssue"],
+      },
+    });
+    const selected = await idx.select("create an invoice or issue", { maxTools: 5 });
+    const unique = [...new Set(selected)];
+    expect(selected).toEqual(unique);
+  });
+
+  it("works together with alwaysActive", async () => {
+    const idx = createToolIndex(allTools, {
+      relatedTools: {
+        createInvoice: ["queryDatabase"],
+      },
+    });
+    const selected = await idx.select("create an invoice", {
+      maxTools: 2,
+      alwaysActive: ["getWeather"],
+    });
+    expect(selected).toContain("createInvoice");
+    expect(selected).toContain("getWeather");
+    expect(selected).toContain("queryDatabase");
+  });
+});

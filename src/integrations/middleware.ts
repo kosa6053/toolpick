@@ -1,5 +1,6 @@
 import type { LanguageModelMiddleware } from "ai";
 import type { SearchEngine, SelectOptions } from "../search/types";
+import { expandRelated } from "../tool-index";
 
 /**
  * Creates a LanguageModelMiddleware that filters tools via transformParams.
@@ -12,6 +13,7 @@ export function createMiddleware(
   engine: SearchEngine,
   toolNames: string[],
   options: SelectOptions = {},
+  relatedMap?: Record<string, string[]>,
 ): LanguageModelMiddleware {
   const { maxTools = 5, alwaysActive = [] } = options;
 
@@ -25,14 +27,15 @@ export function createMiddleware(
       }
 
       const results = await engine.search(query, maxTools);
-      const selected = new Set([
+      const merged = [...new Set([
         ...results.map((r) => r.name),
         ...alwaysActive,
-      ]);
+      ])];
+      const expanded = new Set(expandRelated(merged, relatedMap));
 
       const filteredTools = params.tools.filter((t) => {
         const name = "name" in t ? (t as { name: string }).name : undefined;
-        return name ? selected.has(name) : true;
+        return name ? expanded.has(name) : true;
       });
 
       return { ...params, tools: filteredTools };

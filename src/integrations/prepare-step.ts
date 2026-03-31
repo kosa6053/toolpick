@@ -1,6 +1,7 @@
 import type { PrepareStepFunction, ToolSet } from "ai";
 import type { SearchEngine, SelectOptions } from "../search/types";
 import { extractQuery } from "../query-extractor";
+import { expandRelated } from "../tool-index";
 
 function asActiveTools<TOOLS extends ToolSet>(names: string[]): Array<keyof TOOLS> {
   return names as Array<keyof TOOLS>;
@@ -19,6 +20,7 @@ export function createPrepareStep<TOOLS extends ToolSet>(
   engine: SearchEngine,
   toolNames: (keyof TOOLS & string)[],
   options: SelectOptions = {},
+  relatedMap?: Record<string, string[]>,
 ): PrepareStepFunction<TOOLS> {
   const { maxTools = 5, alwaysActive = [] } = options;
   const toolNameSet = new Set<string>(toolNames);
@@ -57,7 +59,8 @@ export function createPrepareStep<TOOLS extends ToolSet>(
     const selected = pageResults.map((r) => r.name);
 
     const merged = [...new Set([...selected, ...alwaysActive])];
-    const activeTools = merged.filter((name) => toolNameSet.has(name));
+    const expanded = expandRelated(merged, relatedMap);
+    const activeTools = expanded.filter((name) => toolNameSet.has(name));
 
     return { activeTools: asActiveTools<TOOLS>(activeTools) };
   };

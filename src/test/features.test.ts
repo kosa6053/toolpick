@@ -1,8 +1,10 @@
 import { describe, it, expect, afterAll } from "bun:test";
 import { fileCache } from "../cache";
 import { createPrepareStep } from "../integrations/prepare-step";
+import { createToolIndex } from "../tool-index";
 import { HybridSearch } from "../search/hybrid";
 import type { ToolDescription } from "../search/types";
+import { tool, jsonSchema } from "ai";
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -140,5 +142,131 @@ describe("prepareStep escalation", () => {
     } as any);
 
     expect(result?.activeTools?.length).toBeLessThanOrEqual(2);
+  });
+
+  it("includes relatedTools companions", async () => {
+    const fn = createPrepareStep(engine, toolNames, { maxTools: 2 }, {
+      deployApp: ["queryDB"],
+    });
+
+    const result = await fn({
+      messages: [{ role: "user" as const, content: "deploy the app" }],
+      steps: [],
+      stepNumber: 0,
+    } as any);
+
+    expect(result?.activeTools).toContain("deployApp");
+    expect(result?.activeTools).toContain("queryDB");
+  });
+});
+
+describe("relatedTools via createToolIndex integrations", () => {
+  const indexTools = {
+    deployApp: tool({
+      description: "Deploy the application to production",
+      inputSchema: jsonSchema<{ branch: string }>({
+        type: "object",
+        properties: { branch: { type: "string" } },
+        required: ["branch"],
+      }),
+      execute: async () => ({ url: "" }),
+    }),
+    sendSlack: tool({
+      description: "Send a message to Slack channel",
+      inputSchema: jsonSchema<{ text: string }>({
+        type: "object",
+        properties: { text: { type: "string" } },
+        required: ["text"],
+      }),
+      execute: async () => ({ ok: true }),
+    }),
+    queryDB: tool({
+      description: "Query the PostgreSQL database",
+      inputSchema: jsonSchema<{ sql: string }>({
+        type: "object",
+        properties: { sql: { type: "string" } },
+        required: ["sql"],
+      }),
+      execute: async () => ({ rows: [] }),
+    }),
+    sendEmail: tool({
+      description: "Send an email to a recipient",
+      inputSchema: jsonSchema<{ to: string }>({
+        type: "object",
+        properties: { to: { type: "string" } },
+        required: ["to"],
+      }),
+      execute: async () => ({ sent: true }),
+    }),
+  };
+
+  it("prepareStep propagates index-level relatedTools", async () => {
+    const idx = createToolIndex(indexTools, {
+      relatedTools: { deployApp: ["queryDB"] },
+    });
+    const fn = idx.prepareStep({ maxTools: 2 });
+
+    const result = await fn({
+      messages: [{ role: "user" as const, content: "deploy the app to production" }],
+      steps: [],
+      stepNumber: 0,
+    } as any);
+
+    expect(result?.activeTools).toContain("deployApp");
+    expect(result?.activeTools).toContain("queryDB");
+  });
+
+  it("prepareStep per-call relatedTools overrides index-level", async () => {
+    const idx = createToolIndex(indexTools, {
+      relatedTools: { deployApp: ["queryDB"] },
+    });
+    const fn = idx.prepareStep({
+      maxTools: 2,
+      relatedTools: { deployApp: ["sendSlack"] },
+    });
+
+    const result = await fn({
+      messages: [{ role: "user" as const, content: "deploy the app to production" }],
+      steps: [],
+      stepNumber: 0,
+    } as any);
+
+    expect(result?.activeTools).toContain("deployApp");
+    expect(result?.activeTools).toContain("sendSlack");
+    expect(result?.activeTools).not.toContain("queryDB");
+  });
+
+  it("middleware propagates index-level relatedTools", async () => {
+    const idx = createToolIndex(indexTools, {
+      relatedTools: { deployApp: ["queryDB"] },
+    });
+    const mw = idx.middleware({ maxTools: 2 });
+
+    const params = {
+      prompt: [{ role: "user", content: "deploy the app to production" }],
+      tools: Object.keys(indexTools).map((name) => ({ name, type: "function" })),
+    };
+
+    const result = await mw.transformParams!({ params } as any);
+    const names = result.tools!.map((t: any) => t.name);
+    expect(names).toContain("deployApp");
+    expect(names).toContain("queryDB");
+  });
+
+  it("middleware per-call relatedTools: {} disables expansion", async () => {
+    const idx = createToolIndex(indexTools, {
+      relatedTools: { deployApp: ["queryDB"] },
+    });
+    const mw = idx.middleware({ maxTools: 2, relatedTools: {} });
+
+    const params = {
+      prompt: [{ role: "user", content: "deploy the app to production" }],
+      tools: Object.keys(indexTools).map((name) => ({ name, type: "function" })),
+    };
+
+    const result = await mw.transformParams!({ params } as any);
+    const names = result.tools!.map((t: any) => t.name);
+    expect(names).toContain("deployApp");
+    expect(names).not.toContain("queryDB");
   });
 });
